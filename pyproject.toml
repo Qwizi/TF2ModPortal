@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "tf2modportal"
+version = "0.1.0"
+description = ""
+authors = ["Adrian Ciolek <ciolek.adrian@protonmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+django = "^5.1"
+psycopg = {extras = ["binary"], version = "^3.2.1"}
+celery = {extras = ["redis"], version = "^5.4.0"}
+django-celery-results = "^2.5.1"
+django-redis = "^5.4.0"
+django-celery-beat = "^2.7.0"
+requests = "^2.32.3"
+beautifulsoup4 = "^4.12.3"
+django-prefix-id = "^1.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
