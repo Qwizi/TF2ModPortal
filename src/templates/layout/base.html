@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+{% load i18n %}
+{% load static %}
+<html lang="en" data-theme="halloween">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+    <title>TF2ModPortal</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.2"
+            integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ"
+            crossorigin="anonymous"></script>
+
+    {% block css %}
+
+    {% endblock css %}
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' hx-boost="true">
+{% include "layout/navbar.html" %}
+<div class="container mx-auto">
+    <div class="flex flex-col gap-6 mt-10">
+        {% for message in messages %}
+            {% if message.level_tag == "warning" %}
+                <div class="flex items-center gap-6 p-6 bg-base-200 rounded border-t-4 border-warning">
+                    <i class="fa-solid fa-triangle-exclamation text-2xl text-warning"></i>
+
+                    <div class="flex flex-col">
+                        <h3 class="font-bold">Ostrzeżenie</h3>
+                        <span>{{ message|safe }}</span>
+                    </div>
+                </div>
+            {% elif message.level_tag == "info" %}
+                <div class="flex items-center gap-6 p-6 bg-base-200 rounded border-t-4 border-info">
+                    <i class="fa-solid fa-circle-info text-2xl text-info"></i>
+
+                    <div class="flex flex-col">
+                        <h3 class="font-bold">Informacja</h3>
+                        <span>{{ message|safe }}</span>
+                    </div>
+                </div>
+            {% elif message.level_tag == "error" %}
+                <div class="flex items-center gap-6 p-6 bg-base-200 rounded border-t-4 border-error">
+                    <i class="fa-solid fa-bolt text-2xl text-error"></i>
+
+                    <div class="flex flex-col">
+                        <h3 class="font-bold">Błąd</h3>
+                        <span>{{ message|safe }}</span>
+                    </div>
+                </div>
+            {% elif message.level_tag == "success" %}
+                <div class="flex items-center gap-6 p-6 bg-base-200 rounded border-t-4 border-success">
+                    <i class="fa-solid fa-circle-check text-2xl text-success"></i>
+
+                    <div class="flex flex-col">
+                        <h3 class="font-bold">Sukces</h3>
+                        <span>{{ message|safe }}</span>
+                    </div>
+                </div>
+            {% endif %}
+
+        {% endfor %}
+    </div>
+    {% if breadcrumbs %}
+        {#        {% include "layout/breadcrumbs.html" with breadcrumbs=breadcrumbs %}#}
+    {% endif %}
+    {% block body %}
+
+        {% block content %}
+        {% endblock content %}
+    {% endblock body %}
+    {% block extra_body %}
+    {% endblock extra_body %}
+
+
+
+    {% block js %}
+
+    {% endblock js %}
+
+</div>
+
+</body>
+</html>

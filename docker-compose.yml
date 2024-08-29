@@ -21,9 +21,9 @@ services:
             context: ./
             dockerfile: Dockerfile
         container_name: tf2modportal_celery
-        command: celery -A tf2modportal worker --loglevel=info
+        command: watchmedo auto-restart --directory=/app --pattern=*.py --recursive -- celery -A tf2modportal worker --loglevel=info
         volumes:
-            - ./src//:/app/
+            - ./src/:/app/
         env_file:
             - .env
         restart: unless-stopped

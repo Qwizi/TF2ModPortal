@@ -3,7 +3,7 @@ from pathlib import Path
 from celery import shared_task
 from django.conf import settings
 
-from sourcemod.services import SourceModDownloader
+from core.services import SourceModDownloader
 from tf2modportal.services import FileExtractor
 
 

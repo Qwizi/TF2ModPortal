@@ -7,7 +7,7 @@ from prefix_id import PrefixIDField
 
 # Create your models here.
 class MetaMod(models.Model):
-    id = PrefixIDField(prefix="metamod_", primary_key=True)
+    id = PrefixIDField(prefix="metamod", primary_key=True)
     version = models.CharField(max_length=50, unique=True)
     windows_file = models.FileField(upload_to='downloads/metamod/windows/', null=True, blank=True)
     linux_file = models.FileField(upload_to='downloads/metamod/linux/', null=True, blank=True)

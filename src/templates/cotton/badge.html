@@ -1,0 +1,29 @@
+<div class="badge
+    {% if type == "primary" %}
+    badge-primary
+    {% elif type == "secondary" %}
+    badge-secondary
+    {% elif type == "success" %}
+    badge-success
+    {% elif type == "error" %}
+    badge-error
+    {% elif type == "warning" %}
+    badge-warning
+    {% elif type == "neutral" %}
+    badge-neutral
+    {% endif %}
+    {% if size == "sm" %}
+    badge-sm
+    {% elif size == "lg" %}
+    badge-lg
+    {% endif %}
+    {% if rounded %}
+    badge-rounded
+    {% endif %}
+    {% if outline %}
+    badge-outline
+    {% endif %}
+    text-white
+">
+    {{ slot }}
+</div>

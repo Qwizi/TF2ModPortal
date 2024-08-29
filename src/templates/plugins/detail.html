@@ -1,0 +1,55 @@
+{% extends "layout/base.html" %}
+{% load markdown_extras %}
+{% block body %}
+    <c-hero title="{{ plugin.name }}">
+        {#    <!-- Create card with plugin description -->#}
+        {#        <c-card title="Description">#}
+        {#            {{ plugin.description }}#}
+        {#        </c-card>#}
+        {#        <!-- Create card with plugin details -->#}
+        {#        <c-card title="Details">#}
+        {#            <div class="flex flex-col gap-2">#}
+        {#                <c-badge type="neutral">{{ plugin.get_latest_version }}</c-badge>#}
+        {#                <span>@{{ plugin.author }}</span>#}
+        {#                {{ plugin.get_tagged_name }}#}
+        {#            </div>#}
+        {#        </c-card>#}
+        <!-- Create 2 cards one width 3/4 with description and one with 1/4 with details -->
+        <!-- But with the width description 3/4 and details 1/4 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <c-card class="col-span-3" title="Description">
+                {{ plugin.description|markdown|safe }}
+                <div class="mockup-code">
+                    <pre><code>npm i daisyui</code></pre>
+                </div>
+            </c-card>
+            <div class="flex flex-col gap-4 col-span-1">
+                <c-card title="Details" h="64">
+                    <div class="flex flex-col gap-2">
+                        <c-badge type="neutral">{{ plugin.get_latest_version }}</c-badge>
+                        <span>@{{ plugin.author }}</span>
+                        <c-badge type="primary">{{ plugin.get_tagged_name }}</c-badge>
+
+                        {% for tag in plugin.tags.all %}
+                            <details class="collapse bg-base-300">
+                                <summary class="collapse-title text-xl font-medium">{{ tag.version }}</summary>
+                                <div class="collapse-content">
+                                    <p>content</p>
+                                </div>
+                            </details>
+                        {% endfor %}
+                    </div>
+                </c-card>
+
+                <c-card title="Download" h="64">
+                    <a href="{% url 'plugins:download' pk=plugin.tags.all.first.pk %}"
+                       class="btn btn-primary text-white" hx-boost="false">Download</a>
+                    <a href="{{ plugin.url }}"
+                       class="btn btn-neutral text-white" target="_blank">Visit
+                        plugin page</a>
+                </c-card>
+            </div>
+
+        </div>
+    </c-hero>
+{% endblock body %}

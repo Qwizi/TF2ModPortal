@@ -8,7 +8,7 @@ from prefix_id import PrefixIDField
 
 
 class SourceMod(models.Model):
-    id = PrefixIDField(prefix="sourcemod_", primary_key=True)
+    id = PrefixIDField(prefix="sourcemod", primary_key=True)
     version = models.CharField(max_length=50, unique=True)
     windows_file = models.FileField(upload_to='downloads/sourcemod/windows/', null=True, blank=True)
     linux_file = models.FileField(upload_to='downloads/sourcemod/linux/', null=True, blank=True)

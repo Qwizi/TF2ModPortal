@@ -16,6 +16,11 @@ django-celery-beat = "^2.7.0"
 requests = "^2.32.3"
 beautifulsoup4 = "^4.12.3"
 django-prefix-id = "^1.0.0"
+django-unfold = "^0.36.0"
+markdown = "^3.7"
+django-cotton = "^0.9.32"
+django-htmx = "^1.19.0"
+watchdog = "^5.0.0"
 
 
 [build-system]

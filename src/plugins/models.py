@@ -11,11 +11,12 @@ from prefix_id import PrefixIDField
 
 
 class Tag(models.Model):
-    id = PrefixIDField(prefix="tag_", primary_key=True)
+    id = PrefixIDField(prefix="tag", primary_key=True)
     tagged_name = models.CharField(max_length=255)
     plugin = models.ForeignKey('Plugin', on_delete=models.CASCADE, related_name='tags')
     version = models.CharField(max_length=255)
     is_latest = models.BooleanField(default=False)
+    archive_file = models.FileField(upload_to='downloads/plugins', blank=True, null=True)
 
     def __str__(self):
         return f"{self.tagged_name}"
@@ -42,7 +43,7 @@ class PluginFile(models.Model):
         CFG = 'cfg', 'Configuration File'
         ZIP = 'zip', 'Zip Archive'
 
-    id = PrefixIDField(prefix="plugin_file_", primary_key=True)
+    id = PrefixIDField(prefix="plugin_file", primary_key=True)
     file_name = models.CharField(max_length=255, default="plugin.smx")
     file_type = models.CharField(max_length=255, choices=FileType.choices, default=FileType.SMX)
     file = models.FileField(upload_to='downloads/plugins/', blank=True, null=True)
@@ -60,7 +61,7 @@ class PluginFile(models.Model):
 
 
 class Category(models.Model):
-    id = PrefixIDField(prefix="category_", primary_key=True)
+    id = PrefixIDField(prefix="category", primary_key=True)
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
 
@@ -73,7 +74,7 @@ class Category(models.Model):
 
 
 class SupportedGame(models.Model):
-    id = PrefixIDField(prefix="game_", primary_key=True)
+    id = PrefixIDField(prefix="game", primary_key=True)
     name = models.CharField(max_length=255)
     app_id = models.IntegerField()
     icon = models.URLField()
@@ -87,7 +88,7 @@ class Plugin(models.Model):
         SOURCEMOD = 'sourcemod', 'SourceMod'
         GITHUB = 'github', 'GitHub'
 
-    id = PrefixIDField(prefix="plugin_", primary_key=True)
+    id = PrefixIDField(prefix="plugin", primary_key=True)
     short_id = models.CharField(max_length=255, unique=True, blank=True, null=True)
     plugin_source = models.CharField(max_length=50, choices=PluginSource.choices, default=PluginSource.SOURCEMOD)
     supported_games = models.ManyToManyField(SupportedGame, related_name='plugins')
@@ -130,10 +131,10 @@ class Plugin(models.Model):
         file_path = None
         if file_type == PluginFile.FileType.SP:
             file_path = Path(
-                settings.MEDIA_ROOT) / "tmp/downloads/plugins/" / self.id / "addons/sourcemod/scripting" / file_name
+                settings.MEDIA_ROOT) / "tmp/downloads/plugins/" / self.id / file_name
         if file_type == PluginFile.FileType.SMX:
             file_path = Path(
-                settings.MEDIA_ROOT) / "tmp/downloads/plugins/" / self.id / "addons/sourcemod/plugins" / file_name
+                settings.MEDIA_ROOT) / "tmp/downloads/plugins/" / self.id / file_name
         file_path.parent.mkdir(parents=True, exist_ok=True)
         with default_storage.open(file_path, 'wb+') as destination:
             destination.write(response.content)
@@ -143,7 +144,15 @@ class Plugin(models.Model):
         if not tag:
             return
         plugin_files = tag.files.all()
-        return plugin_files
+        return plugin_files, tag
+
+    def get_tagged_name(self, version=None):
+        if not version:
+            return self.tags.first().tagged_name
+        return self.tags.filter(version=version).first().tagged_name
+
+    def get_latest_version(self):
+        return self.tags.filter(is_latest=True).first().version
 
     def save(self, *args, **kwargs):
         if not self.short_id:

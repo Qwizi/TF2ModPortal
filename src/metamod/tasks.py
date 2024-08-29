@@ -21,6 +21,7 @@ def extract_metamod_files():
     windows_dir = Path(settings.MEDIA_ROOT) / 'downloads/metamod/windows'
     linux_dir = Path(settings.MEDIA_ROOT) / 'downloads/metamod/linux'
     build_dir = Path(settings.MEDIA_ROOT) / 'build'
+    print(windows_dir)
 
     extractor_windows = FileExtractor(windows_dir, linux_dir, build_dir)
     extractor_windows.extract_files("linux")

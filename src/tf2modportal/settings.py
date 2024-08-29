@@ -45,11 +45,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_celery_results',
     'django_celery_beat',
-
+    'django_cotton',
+    'django_htmx',
     'sourcemod',
     'metamod',
     'plugins',
     'core',
+    'builds',
 ]
 
 MIDDLEWARE = [
@@ -60,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django_htmx.middleware.HtmxMiddleware",
 ]
 
 ROOT_URLCONF = 'tf2modportal.urls'
@@ -67,7 +70,7 @@ ROOT_URLCONF = 'tf2modportal.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -150,3 +153,11 @@ CELERY_BROKER_URL = f"redis://:{os.environ.get('REDIS_PASSWORD')}@{os.environ.ge
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 CELERY_TIMEZONE = 'Europe/Warsaw'
+CELERY_RESULT_EXTENDED = True
+CELERY_BEAT_SCHEDULE = {
+    'get-plugins-every-hour': {
+        'task': 'plugins.tasks.get_plugins',
+        'schedule': 3600.0,
+    },
+}
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000

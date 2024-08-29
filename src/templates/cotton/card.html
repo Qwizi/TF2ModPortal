@@ -1,0 +1,12 @@
+<div class="card bg-base-{{ bg|default:'100' }} shadow-xl {% if pinned %}border-2 border-indigo-500/75{% endif %} w-{{ w|default:"full" }} h-{{ h|default:"full" }}">
+    <div class="card-body">
+        {% if title %}
+            <h2 class="card-title">
+                {{ title }}
+            </h2>
+
+        {% endif %}
+        {{ slot }}
+
+    </div>
+</div>

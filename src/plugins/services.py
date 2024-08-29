@@ -7,12 +7,13 @@ from bs4 import BeautifulSoup
 from django.conf import settings
 from django.core.files.storage import default_storage
 
+from core.services import FileManager
 from plugins.models import Plugin, Category, SupportedGame, PluginFile, Tag
 
 
 class SourceModPluginDownloader:
-    def __init__(self, url):
-        self.url = url
+    def __init__(self):
+        self.url = "https://forums.alliedmods.net/"
         self.soup = None
         self.version = None
         self.name = None
@@ -22,6 +23,7 @@ class SourceModPluginDownloader:
         self.plugin_url = None
         self.description = None
         self.author = None
+        self.file_manager = FileManager()
 
     def get_blank_url(self):
         return self.url
@@ -80,8 +82,17 @@ class SourceModPluginDownloader:
         post_message_div = self.soup.find('div', id=lambda x: x and x.startswith('post_message_'))
         post_description = None
         if post_message_div:
-            post_description = post_message_div.get_text(separator='\n', strip=True)
-            post_description = markdown.markdown(post_description)
+            if post_message_div:
+                post_description = post_message_div.decode_contents()
+                soup = BeautifulSoup(post_description, 'html.parser')
+                for code_block in soup.find_all('code'):
+                    wrapper = soup.new_tag('div', **{'class': 'mockup-code'})
+                    pre = soup.new_tag('pre', **{'data-prefix': '$'})
+                    code_block.wrap(pre)
+                    pre.wrap(wrapper)
+                post_description = str(soup)
+                post_description_markdown = markdown.markdown(post_description)
+                return post_description_markdown
         return post_description
 
     def get_plugin_author(self):
@@ -171,23 +182,14 @@ class SourceModPluginDownloader:
             "download_links": self.get_links(),
         }
 
-    def download_files(self, plugin, version):
-        tag = Tag.objects.get(plugin=plugin, version=version)
-        plugin_files = PluginFile.objects.filter(tag=tag)
-        for plugin_file in plugin_files:
-            response = requests.get(plugin_file.download_url)
-            response.raise_for_status()
-            file_path = None
-            if plugin_file.file_type == PluginFile.FileType.SP:
-                file_path = Path(
-                    settings.MEDIA_ROOT) / "tmp/downloads/plugins/" / plugin.id / "addons/sourcemod/scripting" / plugin_file.file_name
-            if plugin_file.file_type == PluginFile.FileType.SMX:
-                file_path = Path(
-                    settings.MEDIA_ROOT) / "tmp/downloads/plugins/" / plugin.id / "addons/sourcemod/plugins" / plugin_file.file_name
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            with default_storage.open(file_path, 'wb+') as destination:
-                destination.write(response.content)
-        return plugin
+    def download_file(self, tag, plugin_file):
+        response = requests.get(plugin_file.download_url)
+        response.raise_for_status()
+        self.file_manager.save_file(response, plugin_file.file_type, tag.plugin.id, plugin_file.file_name, tag.version)
+
+    def archive_files(self, plugin_id, plugin_name, version):
+        archive_name = f"{plugin_name} {version}.zip"
+        return self.file_manager.archive_files(plugin_id, archive_name, version)
 
     def download_smx_file(self, plugin, version):
         tag = Tag.objects.get(plugin=plugin, version=version)
@@ -201,17 +203,6 @@ class SourceModPluginDownloader:
             with default_storage.open(file_path, 'wb+') as destination:
                 destination.write(response.content)
             return smx_file.file_name
-        # remove from the link last part https://forums.alliedmods.net/showthread.php?p=548207 only https://forums.alliedmods.net/
-        # url = self.url.split("showthread.php")[0]
-        # response = requests.get(f"{url}/{smx_link[1]}")
-        # response.raise_for_status()
-        # name = smx_link[0].split(".")[0]
-        # file_name = Path(smx_link[0]).name
-        # file_path = Path(settings.MEDIA_ROOT) / "downloads/plugins/" / name / "addons/sourcemod/plugins" / file_name
-        # file_path.parent.mkdir(parents=True, exist_ok=True)
-        # with default_storage.open(file_path, 'wb+') as destination:
-        #     destination.write(response.content)
-        # return file_name
 
     def download_sp_file(self, sp_link, file_name):
         url = self.url.split("showthread.php")[0]
@@ -311,12 +302,14 @@ class SourceModPluginDownloader:
         plugin_info = self.get_plugin_info(plugin_url)
 
         if Plugin.objects.filter(original_name=plugin_info['name'], author=plugin_info["author"]["name"]).exists():
-            plugin = Plugin.objects.get(name=plugin_info['name'], author=plugin_info["author"]["name"])
+            plugin = Plugin.objects.get(original_name=plugin_info['name'], author=plugin_info["author"]["name"])
             if Tag.objects.filter(plugin=plugin, version=plugin_info['version']).exists():
                 print(f"Plugin {plugin.name} already exists in the database")
-                return
+                return plugin, None
+            return plugin, None
 
         plugin, plugin_file = self.save_to_db(plugin_info)
+        return plugin, plugin_file
         print(f"Saved plugin {plugin.name} to the database")
 
     def find_plugins(self):
@@ -343,24 +336,3 @@ class SourceModPluginDownloader:
             })
 
         return plugins
-# smx_file_name = None
-# sp_file_name = None
-# translation_file_name = None
-# for link in links.items():
-#     if "smx" in link[0]:
-#         smx_file_name = self.download_smx_file(link)
-#         break
-# for link in links.items():
-#     if "smx" in link[0]:
-#         self.download_smx_file(link)
-#         print(f"Downloaded {smx_file_name}")
-#     if "Get Source" in link[0]:
-#         print(f"Downloading {link[0]}")
-#         sp_file_name = self.download_sp_file(link, smx_file_name)
-#     if "txt" in link[0]:
-#         print(f"Downloading {link[0]}")
-#         translation_file_name = self.download_translation_file(link, smx_file_name)
-#         print(f"Downloaded {translation_file_name}")
-# zip_file = self.make_archive(smx_file_name.split(".")[0], "1.0")
-# self.save_to_db(name=smx_file_name.split(".")[0], version="1.0", smx_file=smx_file_name, sp_file=sp_file_name,
-#                 cfg_file=translation_file_name, zip_file=zip_file)
