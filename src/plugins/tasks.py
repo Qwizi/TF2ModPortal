@@ -13,17 +13,16 @@ from plugins.services import SourceModPluginDownloader
 def get_plugin(self, plugin_url):
     try:
         plugin_downloader = SourceModPluginDownloader()
-        plugin, plugin_file = plugin_downloader.get_plugin(plugin_url)
+        plugin = plugin_downloader.get_plugin(plugin_url)
         download_plugin_files.s(plugin.id).apply_async()
         return {
             "status": "success",
             "message": f"Downloaded {plugin.name}",
             "plugin": plugin.name,
-            "plugin_file": plugin_file,
             "url": plugin_url
         }
     except Exception as e:
-        self.update_state(state='FAILURE', meta={'error': str(e)})
+        self.update_state(state='FAILURE', meta={'error': repr(e)})
         raise Ignore()
 
 
@@ -32,15 +31,13 @@ def get_plugins(self):
     try:
         plugin_downloader = SourceModPluginDownloader()
         plugins = plugin_downloader.find_plugins()
-        plugins_urls = [plugin['url'] for plugin in plugins]
-        tasks = [get_plugin.s(plugin_url) for plugin_url in plugins_urls]
+        tasks = [get_plugin.s(plugin['url']) for plugin in plugins]
         job = group(tasks)
         job.apply_async()
-        num_plugins = len(plugins)
         return {
             "status": "success",
-            "message": f"Scheduled {num_plugins} plugins for download",
-            "num_plugins": num_plugins,
+            "message": f"Scheduled {len(plugins)} plugins for download",
+            "num_plugins": len(plugins),
         }
     except Exception as e:
         self.update_state(state='FAILURE', meta={'error': str(e)})
@@ -48,14 +45,14 @@ def get_plugins(self):
 
 
 @shared_task(bind=True, name='plugins.tasks.archive_plugin_files')
-def archive_plugin_files(self, *args, tag_id=None, **kwargs):
-    if tag_id is None:
+def archive_plugin_files(self, *args, **kwargs):
+    tag_id = kwargs.get("tag_id")
+    if not tag_id:
         return {"status": "error", "message": "No tag_id provided"}
     try:
         tag = Tag.objects.get(id=tag_id)
-        plugin = tag.plugin
         plugin_downloader = SourceModPluginDownloader()
-        archive_file = plugin_downloader.archive_files(plugin.id, plugin.name, tag.version)
+        archive_file = plugin_downloader.archive_files(tag.plugin.id, tag.plugin.name, tag.version)
         archive_file_rel = Path(archive_file).relative_to(Path(settings.MEDIA_ROOT) / "downloads/plugins")
         if not tag.archive_file:
             with default_storage.open(archive_file, 'rb') as archive:
@@ -74,6 +71,24 @@ def archive_plugin_files(self, *args, tag_id=None, **kwargs):
         raise Ignore()
 
 
+@shared_task(bind=True)
+def extract_downloads_files(self, *args, **kwargs):
+    try:
+        tag_id = kwargs.get("tag_id")
+        tag = Tag.objects.get(id=tag_id)
+        plugin_downloader = SourceModPluginDownloader()
+        plugin_files = tag.files.filter(file_type=PluginFile.FileType.ZIP)
+        plugin_downloader.extract_downloaded_files(tag, plugin_files)
+        return {
+            "status": "success",
+            "message": "Extracted downloaded files",
+        }
+
+    except Exception as e:
+        self.update_state(state='FAILURE', meta={'error': str(e)})
+        raise Ignore()
+
+
 @shared_task(bind=True, name='plugins.tasks.download_plugin_file')
 def download_plugin_file(self, tag_id, plugin_file_id):
     try:
@@ -81,12 +96,13 @@ def download_plugin_file(self, tag_id, plugin_file_id):
         plugin_file = PluginFile.objects.get(id=plugin_file_id)
         plugin_downloader = SourceModPluginDownloader()
         plugin_downloader.download_file(tag, plugin_file)
+        # if plugin_file.file_type == PluginFile.FileType.ZIP:
+        #     extract_downloads_files.s(tag_id=tag.id).apply_async()
         return {
             "status": "success",
             "message": f"Downloaded {plugin_file.file_name} for {tag.plugin.name} {tag.version}",
             "tag_id": tag.id,
             "plugin_file_id": plugin_file.id
-
         }
     except Exception as e:
         self.update_state(state='FAILURE', meta={'error': str(e)})
@@ -99,16 +115,9 @@ def download_plugin_files(self, plugin_id):
         plugin = Plugin.objects.get(id=plugin_id)
         version = plugin.tags.filter(is_latest=True).first().version
         plugin_files, tag = plugin.get_files_to_download(version)
-
-        # Log tag_id
-        print(f"Starting download tasks for tag_id: {tag.id}")
-
-        # Create a list of download tasks
         download_tasks = [download_plugin_file.s(tag.id, plugin_file.id) for plugin_file in plugin_files]
 
-        # Chord with archiving task as the callback
         job = chord(download_tasks)(archive_plugin_files.s(tag_id=tag.id))
-
         return {
             "status": "success",
             "message": f"Scheduled {len(plugin_files)} files for download",

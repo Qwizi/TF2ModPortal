@@ -2,10 +2,11 @@ import enum
 import os
 import shutil
 import zipfile
+from io import BytesIO
 from pathlib import Path
 
 from django.conf import settings
-from django.core.exceptions import SuspiciousFileOperation
+from django.core.files import File
 from django.core.files.storage import default_storage
 from requests import Response
 
@@ -120,17 +121,49 @@ class FileManager(BaseFileManager):
             raise ValueError("File is not a .cfg file")
         self.config_files.append(file_path)
 
-    def save_file(self, response: Response, file_type: PluginFile.FileType, obj_id: str, file_name: str, version: str):
+    def save_file(self, response: Response, plugin_file, tag):
         file_path = None
-        base_path = self.base_plugins_download_path / obj_id / version
-        if file_type == PluginFile.FileType.SMX:
-            file_path = base_path / self.plugins_dir / file_name
-        elif file_type == PluginFile.FileType.SP:
-            file_path = base_path / self.scripting_dir / file_name
+        file_path_to_save = f"{tag.plugin.id}/{tag.version}/"
+        base_path = self.base_plugins_download_path / tag.plugin.id / tag.version / "files"
+        if plugin_file.file_type == PluginFile.FileType.SMX:
+            file_path = base_path / self.plugins_dir / plugin_file.file_name
+            file_path_to_save = f"{tag.plugin.id}/{tag.version}/files/addons/sourcemod/plugins/{plugin_file.file_name}"
+        elif plugin_file.file_type == PluginFile.FileType.SP:
+            file_path = base_path / self.scripting_dir / plugin_file.file_name
+            file_path_to_save = f"{tag.plugin.id}/{tag.version}/files/addons/sourcemod/scripting/{plugin_file.file_name}"
+        elif plugin_file.file_type == PluginFile.FileType.ZIP:
+            file_path = self.base_plugins_download_path / tag.plugin.id / tag.version  / "archives" / plugin_file.file_name
+            file_path_to_save = f"{tag.plugin.id}/{tag.version}/archives/{plugin_file.file_name}"
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        with default_storage.open(file_path, 'wb+') as destination:
-            destination.write(response.content)
+
+        # Save the response content directly to the PluginFile model's file field
+
+        django_file = File(BytesIO(response.content), name=plugin_file.file_name)
+        plugin_file.file.save(file_path_to_save, django_file, save=True)
+
         return file_path
+        # with default_storage.open(file_path, 'wb+') as destination:
+        #     destination.write(response.content)
+        #
+        # with default_storage.open(file_path, 'rb') as f:
+        #     django_file = File(f)
+        #     plugin_file.file.save(file_path.name, django_file, save=True)
+        # return file_path
+
+    def move_files(self, obj_id: str, version: str, temp: bool = False):
+        plugin_dir = self.base_plugins_download_path / obj_id / version if not temp else self.base_plugins_download_path / obj_id / version / "temp"
+
+        for file in plugin_dir.rglob("*"):
+            if file.suffix == ".smx":
+                self.move(file, plugin_dir / self.plugins_dir / file.name)
+            elif file.suffix == ".sp":
+                self.move(file, plugin_dir / self.scripting_dir / file.name)
+            elif file.suffix == ".inc":
+                self.move(file, plugin_dir / self.include_dir / file.name)
+            elif file.suffix == ".txt":
+                self.move(file, plugin_dir / self.translations_dir / file.name)
+            elif file.suffix == ".cfg":
+                self.move(file, plugin_dir / file.name)
 
     def archive_files(self, obj_id: str, archive_name: str, version: str):
         plugin_dir = self.base_plugins_download_path / obj_id / version

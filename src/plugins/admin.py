@@ -44,6 +44,7 @@ class PluginAdmin(ModelAdmin):
     inlines = [PluginTagInline, PluginFilesTagInline]
     readonly_fields = ['id', 'short_id']
     actions_row = ["download_plugin_files"]
+    search_fields = ['name', 'tags__tagged_name', 'tags__version']
 
     @action(description="Pobierz pliki", )
     def download_plugin_files(self, request: HttpRequest, object_id: int):
