@@ -24,7 +24,7 @@
                 </div>
             </c-card>
             <div class="flex flex-col gap-4 col-span-1">
-                <c-card title="Details" h="64">
+                <c-card title="Details" h="94">
                     <div class="flex flex-col gap-2">
                         <c-badge type="neutral">{{ plugin.get_latest_version }}</c-badge>
                         <span>@{{ plugin.author }}</span>
@@ -38,10 +38,47 @@
                                 </div>
                             </details>
                         {% endfor %}
+
+
                     </div>
                 </c-card>
 
-                <c-card title="Download" h="64">
+                <c-card title="Download" h="full">
+                    <ul class="menu bg-base-200 rounded-box w-full">
+                        <li>
+                            <a href="#" class="menu-title">Folder</a>
+                        </li>
+                        {% for folder, subfolders in files_structure.items %}
+                            <li>
+                                <details open>
+                                    <summary>{{ folder }}</summary>
+                                    <ul>
+                                        {% for subfolder, files in subfolders.items %}
+                                            <li>
+                                                <details open>
+                                                    <summary>{{ subfolder }}</summary>
+                                                    <ul>
+                                                        {% for subsubfolder, subitems in files.items %}
+                                                            <li>
+                                                                <details open>
+                                                                    <summary>{{ subsubfolder }}</summary>
+                                                                    <ul>
+                                                                        {% for subitem in subitems %}
+                                                                            <li><a href="">{{ subitem }}</a></li>
+                                                                        {% endfor %}
+                                                                    </ul>
+                                                                </details>
+                                                            </li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </details>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </details>
+                            </li>
+                        {% endfor %}
+                    </ul>
                     <a href="{% url 'plugins:download' pk=plugin.tags.all.first.pk %}"
                        class="btn btn-primary text-white" hx-boost="false">Download</a>
                     <a href="{{ plugin.url }}"

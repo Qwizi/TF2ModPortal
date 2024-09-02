@@ -61,40 +61,76 @@ class SourceModPluginDownloader:
             "profile_url": None
         }
 
-    def get_file(self, file_type, sp_file_name=None):
+    def get_files(self):
         fieldset = self.soup.find('fieldset', class_='fieldset')
+        files = []
         if fieldset:
             for a_tag in fieldset.find_all('a', href=True):
                 file_name = a_tag.text.strip()
                 file_url = a_tag['href']
-                if file_name == file_type:
-                    if file_type == "Get Source":
-                        sp_file_name = a_tag.find_next_sibling(text=True).strip().split(" - ")[0].replace("(",
-                                                                                                          "").strip()
-                        return {"source": {"file_name": sp_file_name, "url": f"{self.get_blank_url()}{file_url}"}}
-                    if file_type == "Get Plugin":
-                        return {"plugin": {"file_name": sp_file_name.split(".")[0] + ".smx", "url": file_url}}
-                    if "smx" in file_name:
-                        return {"compiled_plugin": {"file_name": file_name, "url": f"{self.get_blank_url()}{file_url}"}}
+
+                if file_name == "Get Source":
+                    sp_file_name = a_tag.find_next_sibling(text=True).strip().split(" - ")[0].replace("(", "").strip()
+                    files.append(
+                        {"source": {"file_name": sp_file_name, "url": f"{self.get_blank_url()}{file_url}"}})
+                if file_name == "Get Plugin":
+                    files.append({"plugin": {"file_name": "Get Plugin", "url": file_url}})
+                if "smx" in file_name:
+                    files.append(
+                        {"compiled_plugin": {"file_name": file_name, "url": f"{self.get_blank_url()}{file_url}"}})
                 if file_name.endswith(".zip"):
-                    return {"zip_attachment": {"file_name": file_name, "url": f"{self.get_blank_url()}{file_url}"}}
-        return None
+                    files.append(
+                        {"zip_attachment": {"file_name": file_name, "url": f"{self.get_blank_url()}{file_url}"}})
+        return files
 
     def get_links(self):
-        links = []
-        source_file = self.get_file("Get Source")
-        if source_file and "source" in source_file:
-            links.append(source_file)
-            plugin_file = self.get_file("Get Plugin", source_file['source']['file_name'])
-            if plugin_file:
-                links.append(plugin_file)
-        compiled_file = self.get_file("smx")
-        if compiled_file:
-            links.append(compiled_file)
-        zip_file = self.get_file("zip")
-        if zip_file:
-            links.append(zip_file)
-        return links
+        files = self.get_files()
+        for file in files:
+            if "plugin" in file:
+                source_file = [f for f in files if "source" in f][0]
+                file['plugin']['file_name'] = source_file['source']['file_name'].split(".")[0] + ".smx"
+        return files
+
+    # def get_file(self, file_type, sp_file_name=None):
+    #     fieldset = self.soup.find('fieldset', class_='fieldset')
+    #     files = []
+    #     if fieldset:
+    #         for a_tag in fieldset.find_all('a', href=True):
+    #             file_name = a_tag.text.strip()
+    #             file_url = a_tag['href']
+    #             if file_name == file_type:
+    #                 if file_type == "Get Source":
+    #                     sp_file_name = a_tag.find_next_sibling(text=True).strip().split(" - ")[0].replace("(",
+    #                                                                                                       "").strip()
+    #                     files.append(
+    #                         {"source": {"file_name": sp_file_name, "url": f"{self.get_blank_url()}{file_url}"}})
+    #                 if file_type == "Get Plugin":
+    #                     files.append({"plugin": {"file_name": sp_file_name.split(".")[0] + ".smx", "url": file_url}})
+    #                 if "smx" in file_name:
+    #                     files.append(
+    #                         {"compiled_plugin": {"file_name": file_name, "url": f"{self.get_blank_url()}{file_url}"}})
+    #             if file_name.endswith(".zip"):
+    #                 files.append(
+    #                     {"zip_attachment": {"file_name": file_name, "url": f"{self.get_blank_url()}{file_url}"}})
+    #     return files
+    #
+    # def get_links(self):
+    #     links = []
+    #     source_files = self.get_file("Get Source")
+    #     if source_files:
+    #         links.extend(source_files)
+    #         for source_file in source_files:
+    #             if 'source' in source_file:
+    #                 plugin_files = self.get_file("Get Plugin", source_file['source']['file_name'])
+    #                 if plugin_files:
+    #                     links.extend(plugin_files)
+    #     compiled_files = self.get_file("smx")
+    #     if compiled_files:
+    #         links.extend(compiled_files)
+    #     zip_files = self.get_file("zip")
+    #     if zip_files:
+    #         links.extend(zip_files)
+    #     return links
 
     def get_plugin_info(self, plugin_url):
         details = self.get_plugin_details()
@@ -118,40 +154,6 @@ class SourceModPluginDownloader:
     def archive_files(self, plugin_id, plugin_name, version):
         archive_name = f"{plugin_name} {version}.zip"
         return self.file_manager.archive_files(plugin_id, archive_name, version)
-
-    def download_smx_file(self, plugin, version):
-        tag = Tag.objects.get(plugin=plugin, version=version)
-        smx_file = PluginFile.objects.filter(tag=tag, file_type=PluginFile.FileType.SMX).first()
-        if smx_file:
-            response = requests.get(smx_file.download_url)
-            response.raise_for_status()
-            file_path = Path(
-                settings.MEDIA_ROOT) / "downloads/plugins/" / plugin.id / "addons/sourcemod/plugins" / smx_file.file_name
-            with default_storage.open(file_path, 'wb+') as destination:
-                destination.write(response.content)
-            return smx_file.file_name
-
-    def download_sp_file(self, sp_link, file_name):
-        url = self.url.split("showthread.php")[0]
-        response = requests.get(f"{url}/{sp_link[1]}")
-        response.raise_for_status()
-        file_path = Path(settings.MEDIA_ROOT) / "downloads/plugins/" / file_name.split(".")[
-            0] / "addons/sourcemod/scripting" / file_name
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        with default_storage.open(file_path, 'wb+') as destination:
-            destination.write(response.content)
-        return file_name
-
-    def download_translation_file(self, translation_link, file_name):
-        url = self.url.split("showthread.php")[0]
-        response = requests.get(f"{url}/{translation_link[1]}")
-        response.raise_for_status()
-        file_path = Path(settings.MEDIA_ROOT) / "downloads/plugins/" / file_name.split(".")[
-            0] / "addons/sourcemod/translations" / file_name
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        with default_storage.open(file_path, 'wb+') as destination:
-            destination.write(response.content)
-        return file_name
 
     def save_to_db(self, plugin_info):
         category, _ = Category.objects.get_or_create(name=plugin_info['category'])
@@ -230,7 +232,39 @@ class SourceModPluginDownloader:
     def extract_downloaded_files(self, tag, plugin_files):
         plugin_dir = Path(settings.MEDIA_ROOT) / "downloads/plugins" / tag.plugin.id / tag.version / "temp"
         for file in plugin_files:
-            file_path = Path(settings.MEDIA_ROOT) / "downloads/plugins" / tag.plugin.id / tag.version / file.file_name
-            self.file_manager.unzip(file_path, plugin_dir)
-        self.file_manager.move_files(tag.plugin.id, tag.version)
+            self.file_manager.unzip(file.get_file_path(), plugin_dir)
+            # Get files from the extracted directory and iterate to add to db
+            self.file_manager.move_files(tag.plugin.id, tag.version, temp=True)
+        # self.file_manager.move_files(tag.plugin.id, tag.version)
+        self.add_extracted_files_to_db(tag)
         return plugin_dir
+
+    def add_extracted_files_to_db(self, tag):
+        plugin_dir = Path(settings.MEDIA_ROOT) / "downloads/plugins" / tag.plugin.id / tag.version / "files"
+        added_files = set()
+
+        for file in plugin_dir.rglob("*"):
+            if file.suffix == ".sp" and file.name not in added_files:
+                if not PluginFile.objects.filter(file_name=file.name, tag=tag,
+                                                 file_type=PluginFile.FileType.SP).exists():
+                    plugin_file = PluginFile.objects.create(
+                        file_type=PluginFile.FileType.SP,
+                        file_name=file.name,
+                        tag=tag,
+                    )
+                    file_name = f"downloads/plugins/{tag.plugin.id}/{tag.version}/files/addons/sourcemod/scripting/{file.name}"
+                    plugin_file.file.name = file_name
+                    plugin_file.save()
+                    added_files.add(file.name)
+            if file.suffix == ".smx" and file.name not in added_files:
+                if not PluginFile.objects.filter(file_name=file.name, tag=tag,
+                                                 file_type=PluginFile.FileType.SMX).exists():
+                    plugin_file = PluginFile.objects.create(
+                        file_type=PluginFile.FileType.SMX,
+                        file_name=file.name,
+                        tag=tag,
+                    )
+                    file_name = f"downloads/plugins/{tag.plugin.id}/{tag.version}/files/addons/sourcemod/plugins/{file.name}"
+                    plugin_file.file.name = file_name
+                    plugin_file.save()
+                    added_files.add(file.name)

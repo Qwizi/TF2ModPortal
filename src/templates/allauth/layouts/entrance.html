@@ -1,0 +1,13 @@
+{% extends "layout/base.html" %}
+{% load i18n %}
+{% block body %}
+    <div class="flex items-center justify-center mt-10 mb-10 w-full" hx-boost="false">
+        <div class="flex flex-col gap-4 rounded-box bg-base-300 p-6  mx-auto ">
+            <div class="self-center w-screen-xl">
+                 {% block content %}{% endblock %}
+            </div>
+
+        </div>
+    </div>
+
+{% endblock %}

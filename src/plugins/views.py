@@ -25,6 +25,13 @@ class PluginDetailView(DetailView):
         tagged_name = self.kwargs['tagged_name']
         return get_object_or_404(Plugin, tags__tagged_name=tagged_name)
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        tag = self.object.tags.get(tagged_name=self.kwargs['tagged_name'])
+        files_structure = tag.get_files_structure()
+        context['files_structure'] = files_structure
+        return context
+
 
 class PluginDownloadView(View):
     def get(self, request, *args, **kwargs):

@@ -35,6 +35,28 @@ class Tag(models.Model):
             self.tagged_name = self.prepare_tagged_name()
         super().save(*args, **kwargs)
 
+    def get_files_structure(self):
+        # Get files structure for the plugin, like tree, addons/sourcemod/plugins/plugin_name
+
+        files = self.files.all()
+        files_structure = {
+            "addons": {
+                "sourcemod": {
+                    "plugins": [],
+                    "scripting": [],
+                    "translations": []
+                }
+            },
+        }
+        for file in files:
+            if file.file_type == PluginFile.FileType.SMX:
+                files_structure["addons"]["sourcemod"]["plugins"].append(file.get_file_name())
+            if file.file_type == PluginFile.FileType.SP:
+                files_structure["addons"]["sourcemod"]["scripting"].append(file.get_file_name())
+            if file.file_type == PluginFile.FileType.CFG:
+                files_structure["addons"]["sourcemod"]["translations"].append(file.get_file_name())
+        return files_structure
+
 
 class PluginFile(models.Model):
     class FileType(models.TextChoices):
@@ -46,7 +68,7 @@ class PluginFile(models.Model):
     id = PrefixIDField(prefix="plugin_file", primary_key=True)
     file_name = models.CharField(max_length=255, default="plugin.smx")
     file_type = models.CharField(max_length=255, choices=FileType.choices, default=FileType.SMX)
-    file = models.FileField(upload_to='downloads/plugins/', blank=True, null=True)
+    file = models.FileField(upload_to='downloads/plugins/', blank=True, null=True, max_length=255)
     tag = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name='files', blank=True, null=True)
     download_url = models.URLField(blank=True, null=True)
 
@@ -143,7 +165,7 @@ class Plugin(models.Model):
         tag = self.tags.filter(version=version).first()
         if not tag:
             return
-        plugin_files = tag.files.all()
+        plugin_files = tag.files.filter(download_url__isnull=False).all()
         return plugin_files, tag
 
     def get_tagged_name(self, version=None):

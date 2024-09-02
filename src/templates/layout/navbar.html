@@ -24,30 +24,76 @@
                     <i class="fa fa-search" aria-hidden="true"></i>
                 </button>
             </div>
-
-            <!-- Menu (Desktop) -->
-            <div class="shrink-0 hidden md:flex gap-2">
-                <a class="btn btn-sm btn-ghost">Create Account</a>
-                <a class="btn btn-sm btn-primary">
-                    Log in
-                    <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
-                </a>
-            </div>
-
-            <!-- Menu (Mobile) -->
-            <div class="dropdown dropdown-end md:hidden">
-                <button class="btn btn-ghost">
-                    <i class="fa-solid fa-bars text-lg"></i>
-                </button>
-
-                <ul tabindex="0" class="dropdown-content menu z-[1] bg-base-200 p-4 rounded-box shadow w-56 gap-2">
-                    <li><a>Create Account</a></li>
-                    <a class="btn btn-primary btn-sm">
+            {% if not request.user.is_authenticated %}
+                <!-- Menu (Desktop) -->
+                <div class="shrink-0 hidden md:flex gap-2">
+                    <a class="btn btn-sm btn-ghost" href="{% url "account_signup" %}">Create Account</a>
+                    <a class="btn btn-sm btn-primary" href="{% url "account_login" %}">
                         Log in
-                        <i class="fa fa-arrow-right text-xs" aria-hidden="true"></i>
+                        <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
                     </a>
-                </ul>
-            </div>
+                </div>
+
+                <!-- Menu (Mobile) -->
+                <div class="dropdown dropdown-end md:hidden">
+                    <button class="btn btn-ghost">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+
+                    <ul tabindex="0" class="dropdown-content menu z-[1] bg-base-200 p-4 rounded-box shadow w-56 gap-2">
+                        <li><a>Create Account</a></li>
+                        <a class="btn btn-primary btn-sm">
+                            Log in
+                            <i class="fa fa-arrow-right text-xs" aria-hidden="true"></i>
+                        </a>
+                    </ul>
+                </div>
+            {% else %}
+                <!-- Menu (Desktop) -->
+                <div class="shrink-0 hidden md:flex gap-2">
+                    <div class="dropdown dropdown-end">
+                        <div tabindex="0" role="button" class="btn btn-circle  avatar">
+                            <div class="w-10 rounded-full">
+                                {{ request.user.username }}
+                            </div>
+                        </div>
+
+                        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-52">
+                            <div class="divider my-0"></div>
+                            {% if user.is_superuser %}
+                                <li>
+                                    <a href="{% url "admin:index" %} ">
+                                        <i class="fa-solid fa-cog fa-fw"></i>
+                                        Panel Admina
+                                    </a>
+                                </li>
+                            {% endif %}
+                            <div class="divider my-0"></div>
+                            <li>
+                                <a href="{% url "account_logout" %}">
+                                    <i class="fa-solid fa-right-from-bracket fa-fw"></i>
+                                    Wyloguj sie
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Menu (Mobile) -->
+                <div class="dropdown dropdown-end md:hidden">
+                    <button class="btn btn-ghost">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+
+                    <ul tabindex="0" class="dropdown-content menu z-[1] bg-base-200 p-4 rounded-box shadow w-56 gap-2">
+                        <li><a>Create Account</a></li>
+                        <a class="btn btn-primary btn-sm">
+                            Log in
+                            <i class="fa fa-arrow-right text-xs" aria-hidden="true"></i>
+                        </a>
+                    </ul>
+                </div>
+            {% endif %}
         </div>
     </nav>
 
